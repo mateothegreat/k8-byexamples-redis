@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: $APP
+spec:
+  selector:
+    matchLabels:
+      app: $APP
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: $APP
+    spec:
+      nodeSelector:
+        role: services
+      volumes:
+        - name: host-sys
+          hostPath:
+            path: /sys
+      initContainers:
+        - name: disable-thp
+          image: redis:5.0.8-alpine
+          volumeMounts:
+            - name: host-sys
+              mountPath: /host-sys
+          command: [ "sh", "-c", "echo never > /host-sys/kernel/mm/transparent_hugepage/enabled" ]
+      containers:
+        - name: redis
+          image: redis:5.0.7-alpine
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: 200m
+              memory: 500Mi
+          ports:
+            - containerPort: 6379
+        - name: redis-exporter
+          image: oliver006/redis_exporter:latest
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+          ports:
+            - containerPort: 9121
